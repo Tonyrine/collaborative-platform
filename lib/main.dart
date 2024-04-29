@@ -1,5 +1,6 @@
 // import 'package:clpfus/pages/home.dart';
 import 'package:clpfus/screens/login.dart';
+// import 'package:clpfus/screens/activate.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -17,6 +18,7 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       // home: HomePage(key: GlobalKey()),
       home: LoginPage(),
+      // home: ActivatePage(),
     );
   }
 }
