@@ -1,9 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'login.dart'; // Import LoginPage widget
 
 class ActivatePage extends StatelessWidget {
   final String email;
+  late String token; // Define token variable here
 
-  const ActivatePage({Key? key, required this.email}) : super(key: key);
+  ActivatePage({Key? key, required this.email}) : super(key: key);
+
+  Future<void> activateAccount(String token, BuildContext context) async {
+    var url = Uri.parse("http://192.168.43.245/CLP/activate.php");
+    var body = jsonEncode({"email": email, "token": token});
+
+    var response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: body,
+    );
+
+    var data = jsonDecode(response.body);
+    // Handle the response here
+    if (data == "success") {
+      // Activation successful
+      // Navigate to login page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    } else {
+      // Activation failed
+      // Show SnackBar with failure message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Activation failed. Please try again.'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +80,10 @@ class ActivatePage extends StatelessWidget {
                     ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
+                  onChanged: (value) {
+                    // Update the token variable when the text changes
+                    token = value;
+                  },
                 ),
                 const SizedBox(height: 20),
                 Container(
@@ -55,8 +93,9 @@ class ActivatePage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       // Add logic to activate account here
+                      await activateAccount(token, context);
                     },
                     style: ElevatedButton.styleFrom(
                       shadowColor: Colors.transparent,

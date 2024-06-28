@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:clpfus/yolo/appbar.dart';
 import 'package:clpfus/yolo/navbar.dart';
 import 'package:clpfus/yolo/AddQuestion.dart';
-import 'package:clpfus/yolo/category_tags.dart';
 import 'package:clpfus/yolo/AskedQ.dart';
+import 'package:clpfus/yolo/category_tags.dart';
+import 'package:clpfus/yolo/chat_page.dart'; // Import the chat page
+import 'package:provider/provider.dart'; // Import Provider
+import 'package:clpfus/screens/user_id_provider.dart'; // Import UserIdProvider
 
 class Qanda extends StatelessWidget {
   const Qanda({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    String userId = Provider.of<UserIdProvider>(context).userId;
+
     List<String> categories = [
       'Engineering',
       'Computer Science',
@@ -64,9 +71,69 @@ class Qanda extends StatelessWidget {
             const SizedBox(height: 20),
             // Display the category tags
             CategoryTags(categories: categories),
-            const Expanded(
-              child: Center(
-                child: Text("Welcome to the Q & A page!"),
+            const SizedBox(height: 20),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _fetchQuestions(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text('Error: ${snapshot.error}'),
+                    );
+                  } else {
+                    List<dynamic> questions = snapshot.data!;
+                    return ListView.builder(
+                      itemCount: questions.length,
+                      itemBuilder: (context, index) {
+                        var question = questions[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatPage(
+                                  id: question['id'],
+                                  question: question['title'],
+                                  description: question['description'],
+                                  image: question['image'],
+                                  subject: question['subject'],
+                                  source: 'qanda',
+                                ),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                question['title'] ?? 'No Title',
+                                style: const TextStyle(
+                                  fontSize: 20, // Adjust the font size here
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 5), // Reduce the space
+                              Text(
+                                question['description'] ?? 'No Description',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 1, // Only show one line
+                                overflow: TextOverflow.ellipsis, // Add ellipsis
+                              ),
+                              const Divider(),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  }
+                },
               ),
             ),
           ],
@@ -90,8 +157,7 @@ class Qanda extends StatelessWidget {
         child: IconButton(
           icon: const Icon(Icons.add),
           onPressed: () {
-            // Show the popup menu
-            _showPopupMenu(context);
+            _showPopupMenu(context, userId);
           },
           color: Colors.white,
         ),
@@ -101,7 +167,7 @@ class Qanda extends StatelessWidget {
     );
   }
 
-  void _showPopupMenu(BuildContext context) {
+  void _showPopupMenu(BuildContext context, String userId) {
     final RenderBox overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
     final double bottomInset =
@@ -145,11 +211,10 @@ class Qanda extends StatelessWidget {
       elevation: 8.0,
     ).then<void>((value) {
       if (value == 1) {
-        // Navigate to the AddQuestionPage
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const AddQuestionPage(),
+            builder: (context) => AddQuestionPage(userId: userId),
           ),
         );
       } else if (value == 2) {
@@ -161,5 +226,16 @@ class Qanda extends StatelessWidget {
         );
       }
     });
+  }
+
+  Future<List<dynamic>> _fetchQuestions() async {
+    final response = await http.get(
+        Uri.parse('http://192.168.43.245/CLP/questions/get_questions.php'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data;
+    } else {
+      throw Exception('Failed to load questions');
+    }
   }
 }

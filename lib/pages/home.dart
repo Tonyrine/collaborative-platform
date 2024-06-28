@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import Provider
 import 'package:clpfus/yolo/appbar.dart';
 import 'package:clpfus/yolo/navbar.dart';
-import 'package:clpfus/yolo/category_tags.dart'; // Import the CategoryTags widget
+import 'package:clpfus/yolo/category_tags.dart';
+import 'package:clpfus/screens/user_id_provider.dart'; // Import the CategoryTags widget
 
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
+    // Access the user ID from the provider
+    final userIdProvider = Provider.of<UserIdProvider>(context);
+    String userId = userIdProvider.userId;
+
     // Dummy category data
     List<String> categories = [
       'Engineering',
@@ -53,9 +57,10 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             // Display the category tags
             CategoryTags(categories: categories),
-            const Expanded(
+            Expanded(
               child: Center(
-                child: Text("Welcome to the Home Page!"),
+                child: Text(
+                    "Welcome to the Home Page, User $userId!"), // Display the user ID
               ),
             ),
           ],

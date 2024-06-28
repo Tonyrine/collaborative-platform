@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:clpfus/pages/diss.dart';
+import 'package:provider/provider.dart';
 import 'package:clpfus/pages/home.dart';
+import 'package:clpfus/pages/diss.dart';
 import 'package:clpfus/pages/qanda.dart';
+import 'package:clpfus/screens/user_id_provider.dart';
 
 class CoolBottomNavBar extends StatefulWidget {
   @override
@@ -13,17 +15,20 @@ class _CoolBottomNavBarState extends State<CoolBottomNavBar>
   int _selectedIndex = 0;
   int _prevSelectedIndex = 0;
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    HomePage(),
-    const Diss(),
-    const Qanda(),
-  ];
+  late List<Widget> _widgetOptions;
 
   late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+
+    _widgetOptions = [
+      HomePage(),
+      const Diss(),
+      const Qanda(),
+    ];
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -38,11 +43,6 @@ class _CoolBottomNavBarState extends State<CoolBottomNavBar>
     _animationController
         .forward()
         .then((value) => _animationController.reset());
-    // Navigate to the corresponding page
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => _widgetOptions[index]),
-    );
   }
 
   @override
@@ -85,7 +85,14 @@ class _CoolBottomNavBarState extends State<CoolBottomNavBar>
             currentIndex: _selectedIndex,
             selectedItemColor: const Color(0xFFCB997E),
             unselectedItemColor: Colors.grey[600],
-            onTap: _onItemTapped,
+            onTap: (index) {
+              _onItemTapped(index);
+              // Navigate to the selected page
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => _widgetOptions[index]),
+              );
+            },
             type: BottomNavigationBarType.fixed,
             elevation: 5,
             selectedLabelStyle: _prevSelectedIndex == _selectedIndex

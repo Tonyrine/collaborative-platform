@@ -1,7 +1,7 @@
-// import 'package:clpfus/pages/home.dart';
-import 'package:clpfus/screens/login.dart';
-// import 'package:clpfus/screens/activate.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:clpfus/screens/login.dart';
+import 'package:clpfus/screens/user_id_provider.dart'; // Import the UserIdProvider
 
 void main() {
   runApp(MainApp());
@@ -12,13 +12,13 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ignore: prefer_const_constructors
-    return MaterialApp(
-      title: "Collaborative Learning Platform",
-      debugShowCheckedModeBanner: false,
-      // home: HomePage(key: GlobalKey()),
-      home: LoginPage(),
-      // home: ActivatePage(),
+    return ChangeNotifierProvider(
+      create: (context) => UserIdProvider(),
+      child: MaterialApp(
+        title: "Collaborative Learning Platform",
+        debugShowCheckedModeBanner: false,
+        home: LoginPage(),
+      ),
     );
   }
 }
