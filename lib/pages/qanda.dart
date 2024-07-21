@@ -5,19 +5,69 @@ import 'package:clpfus/yolo/appbar.dart';
 import 'package:clpfus/yolo/navbar.dart';
 import 'package:clpfus/yolo/AddQuestion.dart';
 import 'package:clpfus/yolo/AskedQ.dart';
-import 'package:clpfus/yolo/category_tags.dart';
-import 'package:clpfus/yolo/chat_page.dart'; // Import the chat page
-import 'package:provider/provider.dart'; // Import Provider
-import 'package:clpfus/screens/user_id_provider.dart'; // Import UserIdProvider
+import 'package:clpfus/yolo/chat_page.dart';
+import 'package:provider/provider.dart';
+import 'package:clpfus/screens/user_id_provider.dart';
 
-class Qanda extends StatelessWidget {
+class Qanda extends StatefulWidget {
   const Qanda({Key? key}) : super(key: key);
+
+  @override
+  _QandaState createState() => _QandaState();
+}
+
+class _QandaState extends State<Qanda> {
+  List<Map<String, dynamic>> _questionsList = [];
+  List<Map<String, dynamic>> _filteredQuestionsList = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedCategory = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuestions();
+    _searchController.addListener(_filterQuestions);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterQuestions() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredQuestionsList = _questionsList.where((item) {
+        final matchesQuery = item['title'].toLowerCase().contains(query) ||
+            item['description'].toLowerCase().contains(query);
+        final matchesCategory =
+            _selectedCategory == 'All' || item['subject'] == _selectedCategory;
+        return matchesQuery && matchesCategory;
+      }).toList();
+    });
+  }
+
+  Future<void> _fetchQuestions() async {
+    final response = await http.get(
+        Uri.parse('http://192.168.43.245/CLP/questions/get_questions.php'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      setState(() {
+        _questionsList = data.cast<Map<String, dynamic>>();
+        _filteredQuestionsList = _questionsList;
+      });
+    } else {
+      throw Exception('Failed to load questions');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     String userId = Provider.of<UserIdProvider>(context).userId;
 
     List<String> categories = [
+      'All',
       'Engineering',
       'Computer Science',
       'Business',
@@ -32,64 +82,86 @@ class Qanda extends StatelessWidget {
       appBar: const CustomAppBar(),
       backgroundColor: const Color(0xFFFFE8D6),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), // Add padding to the column
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 50, // Adjust the height of the search bar
+              height: 50,
               child: TextField(
+                controller: _searchController,
                 decoration: InputDecoration(
                   hintText: "Search",
-                  hintStyle: const TextStyle(
-                      color: Color(0xFFCB997E)), // Set hint text color
-                  fillColor: Colors.white, // Set background color to white
-                  filled: true, // Enable fill color
+                  hintStyle: const TextStyle(color: Color(0xFFCB997E)),
+                  fillColor: Colors.white,
+                  filled: true,
                   border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(20.0), // Set rounded borders
-                    borderSide: const BorderSide(
-                        color: Color(0xFFCB997E)), // Set border color
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: const BorderSide(color: Color(0xFFCB997E)),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.search),
                     color: const Color(0xFFCB997E),
                     onPressed: () {
-                      // Implement search functionality here
-                      // Access the text field value using TextEditingController
-                      // Example:
-                      // controller.text
+                      _filterQuestions();
                     },
                   ),
                 ),
                 onSubmitted: (String value) {
-                  // Handle search when submitted
+                  _filterQuestions();
                 },
               ),
             ),
             const SizedBox(height: 20),
-            // Display the category tags
-            CategoryTags(categories: categories),
+            Row(
+              children: [
+                const Text(
+                  'Subject:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20.0),
+                      border: Border.all(color: const Color(0xFFCB997E)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedCategory,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedCategory = newValue!;
+                            _filterQuestions();
+                          });
+                        },
+                        items: categories
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
             Expanded(
-              child: FutureBuilder<List<dynamic>>(
-                future: _fetchQuestions(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'),
-                    );
-                  } else {
-                    List<dynamic> questions = snapshot.data!;
-                    return ListView.builder(
-                      itemCount: questions.length,
+              child: _filteredQuestionsList.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      itemCount: _filteredQuestionsList.length,
                       itemBuilder: (context, index) {
-                        var question = questions[index];
+                        var question = _filteredQuestionsList[index];
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -109,32 +181,39 @@ class Qanda extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                question['title'] ?? 'No Title',
-                                style: const TextStyle(
-                                  fontSize: 20, // Adjust the font size here
-                                  fontWeight: FontWeight.bold,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      question['title'] ?? 'No Title',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      question['description'] ??
+                                          'No Description',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 5), // Reduce the space
-                              Text(
-                                question['description'] ?? 'No Description',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                maxLines: 1, // Only show one line
-                                overflow: TextOverflow.ellipsis, // Add ellipsis
-                              ),
-                              const Divider(),
+                              const Divider(height: 8),
                             ],
                           ),
                         );
                       },
-                    );
-                  }
-                },
-              ),
+                    ),
             ),
           ],
         ),
@@ -226,16 +305,5 @@ class Qanda extends StatelessWidget {
         );
       }
     });
-  }
-
-  Future<List<dynamic>> _fetchQuestions() async {
-    final response = await http.get(
-        Uri.parse('http://192.168.43.245/CLP/questions/get_questions.php'));
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data;
-    } else {
-      throw Exception('Failed to load questions');
-    }
   }
 }

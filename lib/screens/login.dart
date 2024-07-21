@@ -48,9 +48,9 @@ class _LoginPageState extends State<LoginPage> {
     if (data['status'] == 'success' || data['status'] == 'first_time') {
       // Authentication successful
       print("Login successful with user ID: ${data['user_id']}");
-      // Set the user ID in the UserIdProvider
+      // Set the user ID and firstname in the UserIdProvider
       Provider.of<UserIdProvider>(context, listen: false)
-          .setUserId(data['user_id']);
+          .setUserId(data['user_id'], data['firstname']);
       // Navigate based on the value of status
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (data['status'] == 'first_time') {

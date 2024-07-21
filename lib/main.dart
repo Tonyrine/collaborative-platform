@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:clpfus/screens/login.dart';
-import 'package:clpfus/screens/user_id_provider.dart'; // Import the UserIdProvider
+// import 'package:clpfus/screens/login.dart';
+import 'package:clpfus/screens/user_id_provider.dart';
+import 'package:clpfus/screens/splash.dart';
 
 void main() {
   runApp(MainApp());
@@ -17,7 +18,7 @@ class MainApp extends StatelessWidget {
       child: MaterialApp(
         title: "Collaborative Learning Platform",
         debugShowCheckedModeBanner: false,
-        home: LoginPage(),
+        home: SplashScreen(),
       ),
     );
   }

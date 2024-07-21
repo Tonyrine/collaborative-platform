@@ -35,11 +35,23 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _textController = TextEditingController();
   String? _imagePath;
   final ScrollController _scrollController = ScrollController();
+  late Timer _timer;
 
   @override
   void initState() {
     super.initState();
     _fetchMessages();
+    // Set up a timer to fetch messages periodically (e.g., every 5 seconds)
+    _timer = Timer.periodic(
+        const Duration(seconds: 5), (Timer t) => _fetchMessages());
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel(); // Cancel the timer when the widget is disposed
+    _scrollController.dispose();
+    _textController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchMessages() async {
@@ -62,19 +74,23 @@ class _ChatPageState extends State<ChatPage> {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      setState(() {
-        messages = List<Map<String, dynamic>>.from(data);
-      });
-      // Scroll to the bottom after fetching messages
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      });
+      if (mounted) {
+        setState(() {
+          messages = List<Map<String, dynamic>>.from(data);
+        });
+        // Scroll to the bottom after fetching messages
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        });
+      }
     } else {
-      setState(() {
-        messages = [
-          {'content': 'Failed to load messages'}
-        ];
-      });
+      if (mounted) {
+        setState(() {
+          messages = [
+            {'content': 'Failed to load messages'}
+          ];
+        });
+      }
     }
   }
 
@@ -171,74 +187,95 @@ class _ChatPageState extends State<ChatPage> {
         ),
         backgroundColor: const Color(0xFFCB997E),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                final imageUrl =
-                    message['image'] != null && message['image'].isNotEmpty
-                        ? 'http://192.168.43.245/clp/images/${message['image']}'
-                        : null;
-                final isOwnMessage = message['userId'].toString() == userId;
-
-                print("Message userId: ${message['userId']}");
-                print("Logged in userId: $userId");
-
-                return FractionallySizedBox(
-                  widthFactor:
-                      0.60, // Adjust this value to set the width of the message tiles
-                  alignment: isOwnMessage
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color:
-                          isOwnMessage ? Color(0xFFFFE8D6) : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    padding: EdgeInsets.all(8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isOwnMessage ? 'ME' : message['userId'].toString(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isOwnMessage ? Colors.blue : Colors.black,
-                          ),
-                        ),
-                        SizedBox(height: 4.0),
-                        if (imageUrl != null)
-                          GestureDetector(
-                            onTap: () {
-                              _showFullScreenImage(imageUrl);
-                            },
-                            child: Container(
-                              width: 100, // Adjust the width as needed
-                              height: 100, // Adjust the height as needed
-                              child: Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(),
-                              ),
-                            ),
-                          ),
-                        if (imageUrl != null) SizedBox(height: 8.0),
-                        Text(message['content'] ?? ''),
-                      ],
-                    ),
-                  ),
-                );
-              },
+          Opacity(
+            opacity: 0.3, // Adjust the opacity value as needed
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/ttot.jpg"), // Background image
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
-          _buildMessageComposer(),
+          Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final imageUrl = message['image'] != null &&
+                            message['image'].isNotEmpty
+                        ? 'http://192.168.43.245/clp/images/${message['image']}'
+                        : null;
+                    final isOwnMessage = message['userId'].toString() == userId;
+
+                    print("Message userId: ${message['userId']}");
+                    print("Logged in userId: $userId");
+
+                    return FractionallySizedBox(
+                      widthFactor:
+                          0.50, // Adjust this value to set the width of the message tiles
+                      alignment: isOwnMessage
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isOwnMessage
+                              ? const Color(0xFFFFE8D6)
+                              : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isOwnMessage
+                                  ? 'ME'
+                                  : message['userId'].toString(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    isOwnMessage ? Colors.blue : Colors.black,
+                              ),
+                            ),
+                            const SizedBox(height: 4.0),
+                            if (imageUrl != null)
+                              GestureDetector(
+                                onTap: () {
+                                  _showFullScreenImage(imageUrl);
+                                },
+                                child: Container(
+                                  width: 100, // Adjust the width as needed
+                                  height: 100, // Adjust the height as needed
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(),
+                                  ),
+                                ),
+                              ),
+                            if (imageUrl != null) const SizedBox(height: 8.0),
+                            Text(message['content'] ?? ''),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              _buildMessageComposer(),
+            ],
+          ),
         ],
       ),
     );
@@ -247,7 +284,9 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildMessageComposer() {
     return SafeArea(
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 8.0,
+            vertical: 12.0), // Add vertical padding for larger text area
         color: Colors.white,
         child: Column(
           children: [
@@ -263,21 +302,31 @@ class _ChatPageState extends State<ChatPage> {
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.photo),
+                  icon: const Icon(Icons.photo),
                   onPressed: _pickImage,
                 ),
                 Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    textInputAction: TextInputAction.send,
-                    decoration: InputDecoration.collapsed(
-                      hintText: 'Send a message...',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical:
+                            12.0), // Add padding inside the text field container
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20.0),
+                      color: Colors.grey[200],
                     ),
-                    onSubmitted: (_) => _sendMessage(),
+                    child: TextField(
+                      controller: _textController,
+                      textInputAction: TextInputAction.send,
+                      decoration: const InputDecoration.collapsed(
+                        hintText: 'Send a message...',
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
+                      maxLines: null, // Allow multiple lines
+                    ),
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.send),
+                  icon: const Icon(Icons.send),
                   onPressed: _sendMessage,
                 ),
               ],
